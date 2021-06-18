@@ -2,7 +2,47 @@ from tkinter import *
 from tkinter import ttk
 import sqlite3
 
+#para gerar reports em pdf
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter, A4
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.platypus import SimpleDocTemplate, Image
+import webbrowser
+
 root = Tk()
+
+class Relatorios():
+    def printCliente(self):
+        webbrowser.open("cliente.pdf")
+    def geraRelatCliente(self):
+        self.c = canvas.Canvas("cliente.pdf")
+
+        self.codigoRel = self.codigo_entry.get()
+        self.nomeRel = self.nome_entry.get()
+        self.foneRel = self.fone_entry.get()
+        self.cidadeRel = self.cidade_entry.get()
+        
+        self.c.setFont("Helvetica-Bold", 18)
+        self.c.drawString(200, 790, 'Ficha do Cliente')
+
+        self.c.setFont("Helvetica-Bold", 18)
+        self.c.drawString(50, 700, 'Codigo:')
+        self.c.drawString(50, 670, 'Nome:')
+        self.c.drawString(50, 630, 'Telefone:')
+        self.c.drawString(50, 600, 'Cidade:')
+
+        self.c.setFont("Helvetica", 18)
+        self.c.drawString(150, 700, self.codigoRel)
+        self.c.drawString(150, 670, self.nomeRel)
+        self.c.drawString(150, 630, self.foneRel)
+        self.c.drawString(150, 600, self.cidadeRel)
+
+        self.c.rect(20, 550, 550, 2, fill=True, stroke=False)
+
+        self.c.showPage()
+        self.c.save()
+        self.printCliente()
 
 class Funcs():
     def limpa_cliente(self):
@@ -68,9 +108,33 @@ class Funcs():
         self.desconecta_db()
         self.limpa_cliente()
         self.select_lista()
+    def altera_cliente(self):
+        self.variaveis()
+        self.conecta_db()
+
+        self.cursor.execute(""" UPDATE clientes SET nome_cliente = ?, telefone = ?, cidade = ?
+        WHERE cod = ? """, (self.nome, self.fone, self.cidade, self.codigo))
+        self.conn.commit()
+
+        self.desconecta_db()
+        self.select_lista()
+        self.limpa_cliente()
+    def busca_cliente(self):
+        self.conecta_db()
+        self.listaCli.delete(*self.listaCli.get_children())
+        self.nome_entry.insert(END, '%')
+        nome = self.nome_entry.get()
+        self.cursor.execute(
+            """ SELECT cod, nome_cliente, telefone, cidade FROM clientes WHERE nome_cliente LIKE '%s' ORDER BY nome_cliente ASC""" % nome)
+        buscanomeCli = self.cursor.fetchall()
+        for i in buscanomeCli:
+            self.listaCli.insert("", END,values=i)
+        
+        self.limpa_cliente()
+        self.desconecta_db()
         
 
-class Application(Funcs):
+class Application(Funcs, Relatorios):
     def __init__(self):
         self.root = root
         self.tela()
@@ -79,6 +143,7 @@ class Application(Funcs):
         self.lista_frame2()
         self.montaTabelas()
         self.select_lista()
+        self.Menus()
         root.mainloop()
     def tela(self):
         self.root.title("Cadastro de Clientes")
@@ -94,13 +159,17 @@ class Application(Funcs):
         self.frame_2.place(relx= 0.02, rely= 0.5, relwidth= 0.96, relheight= 0.46)
     def widgets_frame1(self):
 
+        #canvas
+        self.canvas_bt = Canvas(self.frame_1, bd=0, bg='lightgray', highlightbackground='#107db2', highlightthickness=3)
+        self.canvas_bt.place(relx=0.19, rely=0.08, relwidth=0.22, relheight=0.19)
+
         #botão limpar
-        self.bt_limpar = Button(self.frame_1, text="Limpar", bd=2, bg='#107db2', fg='white', font=('verdana', 8, 'bold'), command= self.limpa_cliente)
+        self.bt_limpar = Button(self.frame_1, text="Limpar", bd=2, bg='#107db2', fg='white', activebackground='#108ecb', activeforeground='white', font=('verdana', 8, 'bold'), command= self.limpa_cliente)
 
         self.bt_limpar.place(relx=0.2, rely=0.1, relwidth=0.1, relheight=0.15)
 
         #botão buscar
-        self.bt_buscar = Button(self.frame_1, text="buscar")
+        self.bt_buscar = Button(self.frame_1, text="buscar", command = self.busca_cliente)
 
         self.bt_buscar.place(relx=0.3, rely=0.1, relwidth=0.1, relheight=0.15)
 
@@ -110,7 +179,7 @@ class Application(Funcs):
         self.bt_novo.place(relx=0.6, rely=0.1, relwidth=0.1, relheight=0.15)
 
         #botão alterar
-        self.bt_alterar = Button(self.frame_1, text="alterar")
+        self.bt_alterar = Button(self.frame_1, text="alterar", command= self.altera_cliente)
 
         self.bt_alterar.place(relx=0.7, rely=0.1, relwidth=0.1, relheight=0.15)
 
@@ -162,6 +231,18 @@ class Application(Funcs):
         self.listaCli.configure(yscroll=self.scrolLista.set)
         self.scrolLista.place(relx=0.96, rely=0.1, relwidth=0.04, relheight=0.85)
         self.listaCli.bind("<Double-1>", self.OnDoubleClick)
+    def Menus(self):
+        menubar = Menu(self.root)
+        self.root.config(menu=menubar)
+        filemenu = Menu(menubar)
+        filemenu2 = Menu(menubar)
 
+        def Quit(): self.root.destroy()
 
+        menubar.add_cascade(label="Opções", menu=filemenu)
+        menubar.add_cascade(label="Relatórios", menu=filemenu2)
+
+        filemenu.add_command(label="Sair", command=Quit)
+        filemenu.add_command(label="Limpa cliente", command=self.limpa_cliente)
+        filemenu2.add_command(label="Ficha do cliente", command=self.geraRelatCliente)
 Application()
