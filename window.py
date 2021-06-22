@@ -12,6 +12,15 @@ import webbrowser
 
 root = Tk()
 
+class Validadores:
+    def validate_entry2(self, text):
+        if text == "": return True
+        try:
+            value = int(text)
+        except ValueError:
+            return False
+        return 0 <= value <= 100
+
 class Relatorios():
     def printCliente(self):
         webbrowser.open("cliente.pdf")
@@ -132,11 +141,13 @@ class Funcs():
         
         self.limpa_cliente()
         self.desconecta_db()
-        
+    def validaEntradas(self):
+        self.vcmd2 = (self.root.register(self.validate_entry2), "%P")    
 
-class Application(Funcs, Relatorios):
+class Application(Funcs, Relatorios, Validadores):
     def __init__(self):
         self.root = root
+        self.validaEntradas()
         self.tela()
         self.frames_de_tela()
         self.widgets_frame1()
@@ -191,7 +202,7 @@ class Application(Funcs, Relatorios):
         #cria label e os inputs do código
         self.lb_codigo = Label(self.frame_1, text = "Código", fg='#107db2')
         self.lb_codigo.place(relx = 0.05, rely=0.05)
-        self.codigo_entry = Entry(self.frame_1)
+        self.codigo_entry = Entry(self.frame_1, validate= "key", validatecommand= self.vcmd2)
         self.codigo_entry.place(relx=0.05, rely=0.15, relwidth=0.08)
 
          #cria label e os inputs do nome
